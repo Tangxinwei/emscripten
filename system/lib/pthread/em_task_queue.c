@@ -90,6 +90,22 @@ void em_task_queue_execute(em_task_queue* queue) {
   queue->processing = 0;
 }
 
+void em_task_queue_cancel(em_task_queue* queue) {
+  pthread_mutex_lock(&queue->mutex);
+  while (!em_task_queue_is_empty(queue)) {
+    task t = em_task_queue_dequeue(queue);
+    if (t.cancel) {
+      t.cancel(t.arg);
+    }
+  }
+  // Any subsequent messages to this queue (for example if a pthread struct is
+  // reused for a future thread, potentially on a different worker) will require
+  // a new notification. TODO: Drop stale postmessages with mismatched
+  // recipients to avoid work being executed on the wrong worker.
+  queue->notification = NOTIFICATION_NONE;
+  pthread_mutex_unlock(&queue->mutex);
+}
+
 int em_task_queue_enqueue(em_task_queue* queue, task t) {
   if (em_task_queue_is_full(queue) && !em_task_queue_grow(queue)) {
     return 0;

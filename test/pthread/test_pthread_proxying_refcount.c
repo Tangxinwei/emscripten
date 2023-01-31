@@ -95,8 +95,8 @@ int main() {
   while (!executed[0] || !executed[1]) {
   }
 
-  // Wait for the notifications to be received.
-  while (processed < 2) {
+  // Wait for the postMessage notification to be received.
+  while (processed < 1) {
   }
 
 #ifndef SANITIZER
