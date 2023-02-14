@@ -32,6 +32,9 @@ See docs/process.md for more on how version tagging works.
   defaults to `emscripten`. Previously it always defaulted to `emscripten`, so
   when a user specified `-fwasm-exceptions`, it resulted in Wasm EH + Emscripten
   SjLj, the combination we do not intend to support for the long term.
+- Synchronous proxying functions in emscripten/proxying.h now return errors
+  instead of hanging forever when the worker thread dies before the proxied work
+  is finished.
 
 3.1.31 - 01/26/23
 -----------------
