@@ -2,6 +2,7 @@ testing cancel followed by proxy
 testing exit followed by proxy
 testing proxy followed by cancel
 testing proxy followed by exit
+testing cancellation callbacks
 testing cancellation of in-progress work
 checking pattern 0
 finishing task 0

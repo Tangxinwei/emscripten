@@ -133,6 +133,65 @@ void test_proxy_then_exit() {
   pthread_join(thread, NULL);
 }
 
+struct callback_info {
+  pthread_t worker;
+  pthread_t proxier;
+  _Atomic int worker_running;
+  _Atomic int should_exit;
+  _Atomic int callback_called;
+};
+
+void* report_running_then_exit(void* arg) {
+  struct callback_info* info = arg;
+
+  info->worker_running = 1;
+
+  while (!info->should_exit) {
+  }
+
+  // The callback will never be dequeued because we exit before returning to the
+  // event loop.
+  pthread_exit(NULL);
+}
+
+void cancel_callback(void* arg) {
+  struct callback_info* info = arg;
+  info->callback_called = 1;
+}
+
+void* proxy_with_callback(void* arg) {
+  struct callback_info* info = arg;
+
+  while (!info->worker_running) {
+  }
+
+  int ret = emscripten_proxy_callback(
+    queue, info->worker, explode, explode, cancel_callback, info);
+  assert(ret == 1);
+
+  info->should_exit = 1;
+
+  // Keep runtime alive so we can receive the cancellation callback.
+  emscripten_exit_with_live_runtime();
+}
+
+void test_cancel_callback() {
+  printf("testing cancellation callbacks\n");
+
+  struct callback_info info = {0};
+
+  pthread_create(&info.worker, NULL, report_running_then_exit, &info);
+  pthread_create(&info.proxier, NULL, proxy_with_callback, &info);
+
+  while (!info.callback_called) {
+  }
+
+  pthread_join(info.worker, NULL);
+
+  pthread_cancel(info.proxier);
+  pthread_join(info.proxier, NULL);
+}
+
 struct in_progress_state {
   int pattern_index;
   int proxier_index;
@@ -241,6 +300,7 @@ int main() {
   test_exit_then_proxy();
   test_proxy_then_cancel();
   test_proxy_then_exit();
+  test_cancel_callback();
   test_cancel_in_progress();
 
   em_proxying_queue_destroy(queue);
