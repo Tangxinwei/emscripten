@@ -369,7 +369,10 @@ int _emscripten_proxy_dlsync_async(pthread_t target_thread, em_promise_t promise
   if (!info) {
     return false;
   }
-  *info = (struct promise_result){.promise = promise, .result = false};
+  *info = (struct promise_result){
+    .promise = promise,
+    .result = false,
+  };
   int rtn = emscripten_proxy_callback(dlopen_proxying_queue,
                                       target_thread,
                                       do_thread_sync,

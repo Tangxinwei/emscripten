@@ -139,12 +139,14 @@ em_proxying_queue* em_proxying_queue_create(void) {
   if (q == NULL) {
     return NULL;
   }
-  *q = (em_proxying_queue){.mutex = PTHREAD_MUTEX_INITIALIZER,
-                           .task_queues = NULL,
-                           .size = 0,
-                           .capacity = 0,
-                           .zombie_prev = NULL,
-                           .zombie_next = NULL};
+  *q = (em_proxying_queue){
+    .mutex = PTHREAD_MUTEX_INITIALIZER,
+    .task_queues = NULL,
+    .size = 0,
+    .capacity = 0,
+    .zombie_prev = NULL,
+    .zombie_next = NULL,
+  };
   return q;
 }
 
@@ -296,10 +298,8 @@ static int do_proxy(em_proxying_queue* q, pthread_t target_thread, task t) {
     return 1;
   }
 
-  emscripten_thread_mailbox_send(target_thread,
-                                 (task){.func = receive_notification,
-                                        .cancel = cancel_notification,
-                                        .arg = tasks});
+  emscripten_thread_mailbox_send(
+    target_thread, (task){receive_notification, cancel_notification, tasks});
   emscripten_thread_mailbox_unref(target_thread);
 
   return 1;
@@ -398,11 +398,13 @@ static void em_proxying_ctx_init(em_proxying_ctx* ctx,
                                  void* arg) {
   static pthread_once_t once = PTHREAD_ONCE_INIT;
   pthread_once(&once, init_active_ctxs);
-  *ctx = (em_proxying_ctx){.func = func,
-                           .arg = arg,
-                           .state = PENDING,
-                           .mutex = PTHREAD_MUTEX_INITIALIZER,
-                           .cond = PTHREAD_COND_INITIALIZER};
+  *ctx = (em_proxying_ctx){
+    .func = func,
+    .arg = arg,
+    .state = PENDING,
+    .mutex = PTHREAD_MUTEX_INITIALIZER,
+    .cond = PTHREAD_COND_INITIALIZER,
+  };
 }
 
 static void em_proxying_ctx_deinit(em_proxying_ctx* ctx) {
@@ -502,9 +504,7 @@ static void call_then_schedule_callback(void* arg) {
   // sure the callback info is freed.
   if (!do_proxy(info->queue,
                 info->caller_thread,
-                (task){.func = call_callback_then_free,
-                       .cancel = free_callback,
-                       .arg = info})) {
+                (task){call_callback_then_free, free_callback, info})) {
     free(info);
   }
 }
@@ -520,9 +520,7 @@ static void schedule_cancel_callback(void* arg) {
   if (info->cancel == NULL ||
       !do_proxy(info->queue,
                 info->caller_thread,
-                (task){.func = cancel_callback_then_free,
-                       .cancel = free_callback,
-                       .arg = info})) {
+                (task){cancel_callback_then_free, free_callback, info})) {
     free(info);
   }
 }
@@ -545,11 +543,10 @@ int emscripten_proxy_callback(em_proxying_queue* q,
     .cancel = cancel,
     .arg = arg,
   };
-  if (!do_proxy(q,
-                target_thread,
-                (task){.func = call_then_schedule_callback,
-                       .cancel = schedule_cancel_callback,
-                       .arg = info})) {
+  if (!do_proxy(
+        q,
+        target_thread,
+        (task){call_then_schedule_callback, schedule_cancel_callback, info})) {
     free(info);
     return 0;
   }
