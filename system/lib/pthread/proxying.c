@@ -624,17 +624,20 @@ int emscripten_proxy_callback(em_proxying_queue* q,
                               void (*cancel)(void*),
                               void* arg) {
   // Allocate the em_proxying_ctx and the user ctx as a single block.
-  em_proxying_ctx* ctx = malloc(sizeof(*ctx) + sizeof(user_callback_ctx));
-  if (ctx == NULL) {
+  struct block {
+    em_proxying_ctx ctx;
+    user_callback_ctx user_ctx;
+  };
+  struct block* block = malloc(sizeof(*block));
+  if (block == NULL) {
     return 0;
   }
-  user_callback_ctx* user_ctx = (user_callback_ctx*)&ctx[1];
-  *user_ctx = (user_callback_ctx){func, callback, cancel, arg};
+  block->user_ctx = (user_callback_ctx){func, callback, cancel, arg};
   return do_proxy_callback(q,
                            target_thread,
                            call_then_finish_callback,
                            user_callback,
                            user_cancel,
-                           user_ctx,
-                           ctx);
+                           &block->user_ctx,
+                           &block->ctx);
 }
