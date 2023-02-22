@@ -592,28 +592,28 @@ int emscripten_proxy_callback_with_ctx(em_proxying_queue* q,
   return do_proxy_callback(q, target_thread, func, callback, cancel, arg, ctx);
 }
 
-typedef struct user_callback_ctx {
+typedef struct callback_ctx {
   void (*func)(void*);
   void (*callback)(void*);
   void (*cancel)(void*);
   void* arg;
-} user_callback_ctx;
+} callback_ctx;
 
 static void call_then_finish_callback(em_proxying_ctx* ctx, void* arg) {
-  user_callback_ctx* user_ctx = arg;
-  user_ctx->func(user_ctx->arg);
+  callback_ctx* cb_ctx = arg;
+  cb_ctx->func(cb_ctx->arg);
   emscripten_proxy_finish(ctx);
 }
 
-static void user_callback(void* arg) {
-  user_callback_ctx* user_ctx = arg;
-  user_ctx->callback(user_ctx->arg);
+static void callback_call(void* arg) {
+  callback_ctx* cb_ctx = arg;
+  cb_ctx->callback(cb_ctx->arg);
 }
 
-static void user_cancel(void* arg) {
-  user_callback_ctx* user_ctx = arg;
-  if (user_ctx->cancel != NULL) {
-    user_ctx->cancel(user_ctx->arg);
+static void callback_cancel(void* arg) {
+  callback_ctx* cb_ctx = arg;
+  if (cb_ctx->cancel != NULL) {
+    cb_ctx->cancel(cb_ctx->arg);
   }
 }
 
@@ -626,18 +626,18 @@ int emscripten_proxy_callback(em_proxying_queue* q,
   // Allocate the em_proxying_ctx and the user ctx as a single block.
   struct block {
     em_proxying_ctx ctx;
-    user_callback_ctx user_ctx;
+    callback_ctx cb_ctx;
   };
   struct block* block = malloc(sizeof(*block));
   if (block == NULL) {
     return 0;
   }
-  block->user_ctx = (user_callback_ctx){func, callback, cancel, arg};
+  block->cb_ctx = (callback_ctx){func, callback, cancel, arg};
   return do_proxy_callback(q,
                            target_thread,
                            call_then_finish_callback,
-                           user_callback,
-                           user_cancel,
-                           &block->user_ctx,
+                           callback_call,
+                           callback_cancel,
+                           &block->cb_ctx,
                            &block->ctx);
 }
