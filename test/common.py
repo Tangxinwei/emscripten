@@ -849,6 +849,12 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       if len(line) > 2048:
         # Sanity check that this is really the emscripten program/module on
         # a single line.
+        if line.strip() == '^':
+          return ''
+        if not line.startswith('var Module=typeof Module!="undefined"'):
+          print("XXX")
+          print(line.strip())
+          print("YYY")
         assert line.startswith('var Module=typeof Module!="undefined"')
         long_lines.append(line)
         line = '<REPLACED ENTIRE PROGRAM ON SINGLE LINE>'
